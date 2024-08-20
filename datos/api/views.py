@@ -3,9 +3,9 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer
+from .serializers import UserSerializer,PubliSerializer
 from rest_framework import generics, permissions, status,viewsets
-from .models import CustomUser
+from .models import CustomUser,post
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 
@@ -39,3 +39,8 @@ def login(request):
 @api_view(['POST'])
 def profile(request):
     return Response({})
+
+class PostViewSet(viewsets.ModelViewSet):
+    queryset= post.objects.all()
+    permission_classes= [permissions.AllowAny]
+    serializer_class = PubliSerializer
