@@ -1,13 +1,15 @@
 from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .serializers import UserSerializer,PubliSerializer
-from rest_framework import generics, permissions, status,viewsets
-from .models import CustomUser,post
-from rest_framework.decorators import api_view
+from .serializers import UserSerializer, PubliSerializer
+from rest_framework import  status
+from .models import CustomUser,publication
+from rest_framework.decorators import api_view,authentication_classes, permission_classes, parser_classes
 from django.shortcuts import get_object_or_404
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 @api_view(['POST'])
@@ -36,11 +38,62 @@ def login(request):
     serializer = UserSerializer(instance= user)
     return Response({'token':token.key, 'user':serializer.data}, status=status.HTTP_200_OK)
 
-@api_view(['POST'])
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
 def profile(request):
-    return Response({})
+    publicaciones = CustomUser.objects.all()
+    serializer = UserSerializer(publicaciones, many=True)
+    return Response(serializer.data)
 
-class PostViewSet(viewsets.ModelViewSet):
-    queryset= post.objects.all()
-    permission_classes= [permissions.AllowAny]
-    serializer_class = PubliSerializer
+    
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def post (request):
+    serializer = PubliSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def mostrar(request):
+    publicaciones = publication.objects.all()
+    serializer = PubliSerializer(publicaciones, many=True)
+    return Response(serializer.data)
+
+
+# @api_view(['PATCH'])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
+# def actualizar(request):
+#     foto_perfil = CustomUser.objects.all()
+#     serializer = UserSerializer(foto_perfil, many=True)
+#     return Response(serializer.data)
+
+
+@api_view(['PATCH'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def actualizar(request):
+    try:
+        user = CustomUser.objects.get(id=request.user.id)  # Asegúrate de usar el modelo CustomUser
+        if 'imagen_perfil' in request.data:
+            user.imagen_perfil = request.data['imagen_perfil']
+            user.save()
+            return Response({'imagen_perfil': user.imagen_perfil.url}, status=status.HTTP_200_OK)
+        return Response({"error": "Imagen no proporcionada"}, status=status.HTTP_400_BAD_REQUEST)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
